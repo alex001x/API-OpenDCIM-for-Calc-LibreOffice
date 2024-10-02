@@ -2,7 +2,7 @@
 Sub SendPDUData()
     ' Définir l'URL de l'API OpenDCIM
     Dim apiUrl As String
-    apiUrl = "http://votre-opendcim/api/v2/pdustats"
+    apiUrl = "https://votre-opendcim/api/v2/pdustats"
     
     ' Définir la clé API (token d'authentification)
     Dim apiKey As String
