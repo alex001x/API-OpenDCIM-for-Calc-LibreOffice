@@ -75,7 +75,7 @@ Sub SendPDUDataWithCurlDirect()
             curlPath = "curl"  ' Si curl est dans le chemin, vous pouvez l'utiliser directement, sinon mettez le chemin complet vers curl.exe
            
             ' Commande curl pour envoyer la requête POST avec les en-têtes appropriés
-	    ' Attention utilisation de -k car server test, en prod utilisation d'un certificat pour le nom de domaine ou adresse IP de confiance et supprimer l'option -K dans la syntaxe curl
+            ' Attention utilisation de -k car server test, en prod utilisation d'un certificat pour le nom de domaine ou adresse IP de confiance et supprimer l'option -K dans la syntaxe curl
             Dim curlCommand As String
 		    curlCommand = curlPath & " -k -X POST """ & apiUrl & """ -H ""accept: application/json"" -H ""Content-Type: application/json"" -u " & username & ":" & password & " --data-binary @" & jsonFilePath
             'MsgBox curlCommand
@@ -88,12 +88,12 @@ Sub SendPDUDataWithCurlDirect()
             Dim returnValue As Long
             returnValue = Shell(cmdCommand, vbNormalFocus)
             'MsgBox ReturnValue
-            ' Gérer les résultats de la requête, gestion des codes erreur 
+            ' Gérer les résultats de la requête gestion des codes erreur
             If returnValue = 0 or 200 Then
                 successCount = successCount + 1
             Else
                 errorCount = errorCount + 1
-                errorDetails = errorDetails & "Erreur à la ligne " & i & " (PDUID: " & pduid & ")" & "Error " & returnValue & Chr(10)
+                errorDetails = errorDetails & "Erreur à la ligne " & i & " (PDUID: " & pduid & ")" & "Error " & returnValue & " " & Chr(10) & curlCommand & Chr(10)
             End If
         Else
             ' Sortir de la boucle si une ligne vide est trouvée
@@ -102,10 +102,10 @@ Sub SendPDUDataWithCurlDirect()
     Next i
    
     ' Afficher un message récapitulatif
-    Dim message As String
-    message = "Traitement terminé." & Chr(10) & "Nombre de lignes réussies : " & successCount & Chr(10) & "Nombre de lignes en erreur : " & errorCount & Chr(10)
-    If errorCount > 0 Then
-        message = message & "Détails des erreurs :" & Chr(10) & errorDetails
-    End If
-    MsgBox message
+     Dim message As String
+     message = "Traitement terminé." & Chr(10) & "Nombre de lignes réussies : " & successCount & Chr(10) & "Nombre de lignes en erreur : " & errorCount & Chr(10)
+     If errorCount > 0 Then
+         	message = message & "Détails des erreurs :" & Chr(10) & errorDetails
+     End If
+     MsgBox message
 End Sub
