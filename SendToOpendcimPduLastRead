@@ -1,76 +1,110 @@
 ' Feuille de calcul relevé des PDU manuel à envoyé à opendcim pour ceux qui ne peuve pas connecté ou administré les pdu via SNMP
-Sub SendPDUData()
-    ' Définir l'URL de l'API OpenDCIM
+Sub SendPDUDataWithCurlDirect()
+    'Message information
+    MsgBox "Attention mode non protégé curl -k"
+    ' Définir l'URL de l'API OpenDCIM (en HTTPS)
     Dim apiUrl As String
-    apiUrl = "https://votre-opendcim/api/v2/pdustats"
-    
-    ' Définir la clé API (token d'authentification)
-    Dim apiKey As String
-    apiKey = "votre_cle_api"  ' Remplacez par votre clé API généré sur opendcim
-    
+    apiUrl = "https://192.168.1.241/api/v1/pdustats"
+   
+    ' Demander le nom d'utilisateur et le mot de passe via une boîte de dialogue
+    Dim username As String
+    Dim password As String
+    username = InputBox("Veuillez entrer votre nom d'utilisateur :", "Authentification API")
+    password = InputBox("Veuillez entrer votre mot de passe :", "Authentification API")
+   
     ' Obtenir la feuille active
     Dim sheet As Object
     sheet = ThisComponent.CurrentController.ActiveSheet
-    
-    ' Définir la première ligne de données (2ème ligne, car la 1ère contient les en-têtes)
-    Dim row As Integer
-    row = 2
-    
-    ' Variables pour stocker les données des cellules
-    Dim pduid As String
-    Dim wattage As String
-    Dim lastread As String
-    
-    ' Boucle à travers toutes les lignes de la feuille jusqu'à ce que la cellule A soit vide
-    Do While sheet.getCellRangeByName("A" & row).String <> ""
-        ' Lire les valeurs des cellules dans les colonnes A, B et C
-        pduid = sheet.getCellRangeByName("A" & row).String
-        wattage = sheet.getCellRangeByName("B" & row).String
-        lastread = sheet.getCellRangeByName("C" & row).String
-        
-        ' Créer une chaîne JSON pour les données de l'API
-        Dim jsonData As String
-        jsonData = "{""PDUID"": """ & pduid & """, ""Wattage"": " & wattage & ", ""LastRead"": """ & lastread & """}"
-        
-        ' Appeler la fonction pour envoyer une requête HTTP POST via WinHTTP avec la clé API
-        Dim response As String
-        response = SendPostRequest(apiUrl, jsonData, apiKey)
-        
-        ' Afficher la réponse de l'API pour chaque ligne
-        MsgBox "Réponse de l'API pour PDUID " & pduid & " : " & response
-        
-        ' Passer à la ligne suivante
-        row = row + 1
-    Loop
+   
+    ' Variables pour gérer les résultats de la boucle
+    Dim successCount As Long
+    Dim errorCount As Long
+    Dim errorDetails As String
+    successCount = 0
+    errorCount = 0
+    errorDetails = ""
+   
+    ' Déterminer la dernière ligne utilisée dans le tableau
+    Dim lastRow As Long
+    lastRow = sheet.getCellRangeByName("A1").getSpreadsheet().getRows().getCount() - 1
+   
+    ' Boucler sur toutes les lignes du tableau
+    Dim i As Long
+    For i = 1 To lastRow
+        ' Vérifier si la cellule n'est pas vide pour éviter d'inclure les lignes vides
+        If Trim(sheet.getCellByPosition(0, i).String) <> "" Then
+            ' Variables pour stocker les données des cellules
+            Dim pduid As String
+            Dim wattage As String
+            Dim lastread As String
+           
+            ' Lire les valeurs des cellules de la ligne courante
+            pduid = Trim(sheet.getCellByPosition(0, i).String)
+            wattage = Trim(sheet.getCellByPosition(1, i).String)
+            lastread = Trim(sheet.getCellByPosition(2, i).String)
+           
+            ' Contrôles sur les données
+            If Not IsNumeric(pduid) Then
+                MsgBox "Erreur : Le PDUID à la ligne " & i & " n'est pas un nombre valide.", 48, "Erreur de Validation"
+                Exit Sub
+            End If
+            If Not IsNumeric(wattage) Then
+                MsgBox "Erreur : Le Wattage à la ligne " & i & " n'est pas un nombre valide.", 48, "Erreur de Validation"
+                Exit Sub
+            End If
+            If Not IsDate(lastread) Then
+                MsgBox "Erreur : La date à la ligne " & i & " n'est pas dans un format de date valide.", 48, "Erreur de Validation"
+                Exit Sub
+            End If
+           
+            ' Construire les données JSON à envoyer
+            Dim jsonData As String
+            jsonData = "{""PDUID"": " & pduid & ", ""Wattage"": " & wattage & ", ""LastRead"": """ & lastread & """}"
+           
+            ' Écrire le JSON dans un fichier temporaire
+            Dim jsonFilePath As String
+            jsonFilePath = Environ("TEMP") & "\curl_data" & pduid & ".json"
+            Dim fileNum As Integer
+            fileNum = FreeFile
+            Open jsonFilePath For Output As #fileNum
+            Print #fileNum, jsonData
+            Close #fileNum
+
+            ' Utiliser le chemin complet de curl (si nécessaire)
+            Dim curlPath As String
+            curlPath = "curl"  ' Si curl est dans le chemin, vous pouvez l'utiliser directement, sinon mettez le chemin complet vers curl.exe
+           
+            ' Commande curl pour envoyer la requête POST avec les en-têtes appropriés
+            Dim curlCommand As String
+		    curlCommand = curlPath & " -k -X POST """ & apiUrl & """ -H ""accept: application/json"" -H ""Content-Type: application/json"" -u " & username & ":" & password & " --data-binary @" & jsonFilePath
+            'MsgBox curlCommand
+
+            ' Exécuter la commande dans cmd.exe pour la rendre visible
+            Dim cmdCommand As String
+            cmdCommand = "cmd.exe /K " & curlCommand
+
+            ' Exécuter la commande curl via Shell et laisser la fenêtre de commande ouverte
+            Dim returnValue As Long
+            returnValue = Shell(cmdCommand, vbNormalFocus)
+            'MsgBox ReturnValue
+            ' Gérer les résultats de la requête
+            If returnValue = 0 or 200 Then
+                successCount = successCount + 1
+            Else
+                errorCount = errorCount + 1
+                errorDetails = errorDetails & "Erreur à la ligne " & i & " (PDUID: " & pduid & ")" & "Error " & returnValue & Chr(10)
+            End If
+        Else
+            ' Sortir de la boucle si une ligne vide est trouvée
+            Exit For
+        End If
+    Next i
+   
+    ' Afficher un message récapitulatif
+    Dim message As String
+    message = "Traitement terminé." & Chr(10) & "Nombre de lignes réussies : " & successCount & Chr(10) & "Nombre de lignes en erreur : " & errorCount & Chr(10)
+    If errorCount > 0 Then
+        message = message & "Détails des erreurs :" & Chr(10) & errorDetails
+    End If
+    MsgBox message
 End Sub
-
-' Fonction pour envoyer une requête HTTP POST via WinHTTP avec clé API
-Function SendPostRequest(url As String, jsonData As String, apiKey As String) As String
-    On Error GoTo ErrorHandler
-
-    ' Créer un objet WinHTTP pour la requête
-    Dim http As Object
-    http = CreateObject("WinHttp.WinHttpRequest.5.1")
-    
-    ' Ouvrir la connexion HTTP
-    http.Open "POST", url, False
-    
-    ' Définir les en-têtes HTTP, y compris l'authentification avec la clé API
-    http.SetRequestHeader "Content-Type", "application/json"
-    http.SetRequestHeader "Authorization", "Bearer " & apiKey  ' Clé API dans l'en-tête
-    
-    ' Envoyer la requête avec les données JSON
-    http.Send jsonData
-    
-    ' Obtenir la réponse
-    SendPostRequest = http.ResponseText
-    Exit Function
-
-ErrorHandler:
-    SendPostRequest = "Erreur : " & Err.Description
-End Function
-
-
-ErrorHandler:
-    SendPostRequest = "Erreur : " & Err.Description
-End Function
