@@ -1,4 +1,4 @@
-Ici la liste des code vb utilisé dans LibreOffice Calc et Ms Excel que je mets à disposition aux fur et à mesure
+Ici la liste des codes vb API utilisés dans LibreOffice Calc et Ms Excel que je mets à disposition aux fur et à mesure
 
 Code permettant une saisie sur tableau excel ou calc des metrics pdu ( pour ceux qui ne souhaite pas les connecter) et mise à jour des données via API
 API Pdustat Excel -> Feuille Excel
