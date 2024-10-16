@@ -1,8 +1,10 @@
 Ici la liste des codes vb API utilisés dans LibreOffice Calc et Ms Excel que je mets à disposition aux fur et à mesure
 
 Code permettant une saisie sur tableau excel ou calc des metrics pdu ( pour ceux qui ne souhaite pas les connecter) et mise à jour des données via API
+
 API Pdustat Excel -> Feuille Excel
   -En cours de
+
 API Pdustat Calc -> Feuille calc Libre office 
   - 3 colonnes ABC sont nécessaires, pduid, wattage, date, les aurtes colonnes à partir de la colonne D existe pour facilité la lecteure du fichier aux tech ou équipe de proximité
   - ![image](https://github.com/user-attachments/assets/d9254e45-cad9-471f-836f-666bb745385e)
