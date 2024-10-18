@@ -5,7 +5,7 @@ Sub SendPDUDataWithCurlDirect()
     If response = 2 then Exit Sub
     ' Définir l'URL de l'API OpenDCIM (en HTTPS)
     Dim apiUrl As String
-    apiUrl = "https://10.156.249.95/api/v1/pdustats"
+    apiUrl = "https://192.168.1.241/api/v1/pdustats"
    
     ' Demander le nom d'utilisateur et le mot de passe via une boîte de dialogue
     Dim username As String
