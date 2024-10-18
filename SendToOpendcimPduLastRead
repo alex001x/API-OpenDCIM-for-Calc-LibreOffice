@@ -1,17 +1,19 @@
 ' Feuille de calcul relevé des PDU manuel à envoyé à opendcim pour ceux qui ne peuve pas connecté ou administré les pdu via SNMP
 Sub SendPDUDataWithCurlDirect()
     'Message information
-    MsgBox "Attention mode non protégé curl -k"
+    response = MsgBox("Attention vérifier votre tableau avant envoie, curl -k  message erreur désactivé certificat SSL", 1 + 48, "Vérification")
+    If response = 2 then Exit Sub
     ' Définir l'URL de l'API OpenDCIM (en HTTPS)
     Dim apiUrl As String
-    apiUrl = "https://192.168.1.241/api/v1/pdustats"
+    apiUrl = "https://10.156.249.95/api/v1/pdustats"
    
     ' Demander le nom d'utilisateur et le mot de passe via une boîte de dialogue
     Dim username As String
     Dim password As String
-    username = InputBox("Veuillez entrer votre nom d'utilisateur :", "Authentification API")
-    password = InputBox("Veuillez entrer votre mot de passe :", "Authentification API")
-   
+    username = InputBox("Veuillez entrer votre nom d'utilisateur OpenDCIM:", "Authentification API")
+    If username = "" Then Exit Sub
+    password = InputBox("Veuillez entrer votre mot de passe OpenDCIM:", "Authentification API")
+    If password = "" Then Exit Sub
     ' Obtenir la feuille active
     Dim sheet As Object
     sheet = ThisComponent.CurrentController.ActiveSheet
@@ -26,13 +28,40 @@ Sub SendPDUDataWithCurlDirect()
    
     ' Déterminer la dernière ligne utilisée dans le tableau
     Dim lastRow As Long
+    ' Boucler pour définir le nombre de lignes du document à importer
+    Dim rowCount As Long
+    
     lastRow = sheet.getCellRangeByName("A1").getSpreadsheet().getRows().getCount() - 1
-   
-    ' Boucler sur toutes les lignes du tableau
+    rowCount = 0
+    
     Dim i As Long
     For i = 1 To lastRow
+        If Trim(sheet.getCellByPosition(0, i).String) <> "" Then
+            rowCount = rowCount + 1
+            Else 
+            Exit For
+        End If
+    Next i
+    lastRow = rowCount
+    
+    'Message information
+    response = Msgbox(lastRow & " Lignes vont être transmises", 1+48, "Vérification")
+    If response = 2 then Exit Sub
+    
+    ' Boucler sur toutes les lignes du tableau
+    For i = 1 To lastRow
+    
         ' Vérifier si la cellule n'est pas vide pour éviter d'inclure les lignes vides
         If Trim(sheet.getCellByPosition(0, i).String) <> "" Then
+        
+        ' Afficher la progression dans une cellule
+        Dim progress As String
+        If rowCount > 0 Then
+            sheet.getCellByPosition(12, 6).String = "Traitement en cours : " & Format((i / rowCount) * 100, "0") & "%"
+        Else
+            sheet.getCellByPosition(12, 6).String = "Traitement en cours : 0%"
+        End If
+
             ' Variables pour stocker les données des cellules
             Dim pduid As String
             Dim wattage As String
@@ -75,21 +104,19 @@ Sub SendPDUDataWithCurlDirect()
             curlPath = "curl"  ' Si curl est dans le chemin, vous pouvez l'utiliser directement, sinon mettez le chemin complet vers curl.exe
            
             ' Commande curl pour envoyer la requête POST avec les en-têtes appropriés
-            ' Attention utilisation de -k car server test, en prod utilisation d'un certificat pour le nom de domaine ou adresse IP de confiance et supprimer l'option -K dans la syntaxe curl
             Dim curlCommand As String
-		    curlCommand = curlPath & " -k -X POST """ & apiUrl & """ -H ""accept: application/json"" -H ""Content-Type: application/json"" -u " & username & ":" & password & " --data-binary @" & jsonFilePath
+  			curlCommand = curlPath & " -k -X POST """ & apiUrl & """ -H ""accept: application/json"" -H ""Content-Type: application/json"" -u " & username & ":" & password & " --data-binary @" & jsonFilePath
             'MsgBox curlCommand
 
             ' Exécuter la commande dans cmd.exe pour la rendre visible
             Dim cmdCommand As String
-            cmdCommand = "cmd.exe /K " & curlCommand
-
-            ' Exécuter la commande curl via Shell et laisser la fenêtre de commande ouverte
+            cmdCommand = curlCommand
+            
             Dim returnValue As Long
-            returnValue = Shell(cmdCommand, vbNormalFocus)
+            returnValue = Shell(cmdCommand,0)
             'MsgBox ReturnValue
-            ' Gérer les résultats de la requête gestion des codes erreur
-            If returnValue = 0 or 200 Then
+            ' Gérer les résultats de la requête
+            If returnValue = 0 or returnValue = 200 Then
                 successCount = successCount + 1
             Else
                 errorCount = errorCount + 1
@@ -102,10 +129,10 @@ Sub SendPDUDataWithCurlDirect()
     Next i
    
     ' Afficher un message récapitulatif
-     Dim message As String
-     message = "Traitement terminé." & Chr(10) & "Nombre de lignes réussies : " & successCount & Chr(10) & "Nombre de lignes en erreur : " & errorCount & Chr(10)
-     If errorCount > 0 Then
-         	message = message & "Détails des erreurs :" & Chr(10) & errorDetails
-     End If
-     MsgBox message
+    Dim message As String
+    message = "Traitement terminé." & Chr(10) & "Nombre de lignes réussies : " & successCount & Chr(10) & "Nombre de lignes en erreur : " & errorCount & Chr(10)
+    If errorCount > 0 Then
+        message = message & "Détails des erreurs :" & Chr(10) & errorDetails
+    End If
+    MsgBox message
 End Sub
